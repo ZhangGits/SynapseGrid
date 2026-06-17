@@ -48,21 +48,15 @@ class RollbackController:
         active_findings = [f for f in all_findings if not f.get("rolled_back")]
 
         events = ctx.event_store.list_events()
-        synth_types = ("SynthesisGenerated", "SynthesisRestored",
-                        "MarkdownGenerated", "MarkdownRestored")
-        original_md = ""
-        for e in events:
-            if e.event_type in synth_types:
-                original_md = e.payload.get("markdown_content", "")
-                break
 
         task = state_after.get("task", {})
         output_mode = task.get("output_mode", "markdown")
         template = task.get("template", "general")
+        prompt = task.get("prompt", "")
 
         llm_synthesis = LlmConfig()
         for e in reversed(events):
-            if e.event_type == "SynthesisGenerated" and isinstance(e.actor, LlmConfig):
+            if e.event_type in ("SynthesisGenerated", "MarkdownGenerated") and isinstance(e.actor, LlmConfig):
                 llm_synthesis = e.actor
                 break
 
@@ -80,7 +74,12 @@ class RollbackController:
             return
 
         rebuilt_md = await self.research_agent.rebuild(
-            original_md, finding_id, reason, active_findings, llm_synthesis,
+            prompt=prompt,
+            template=template,
+            rolled_back_id=finding_id,
+            reason=reason,
+            remaining_findings=active_findings,
+            llm=llm_synthesis,
         )
 
         if output_mode == "markdown":

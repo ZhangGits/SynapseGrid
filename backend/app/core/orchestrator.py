@@ -413,9 +413,9 @@ class Orchestrator:
             event_count=len(events), duration_seconds=0, agent_traces=agent_traces,
         )
 
-        # Extract canvas_schema (LogicGraph) from synthesis event
+        # Extract canvas_schema (LogicGraph) from synthesis event — only for canvas mode
         canvas_schema = None
-        if synthesis_ev:
+        if request.output_mode == "canvas" and synthesis_ev:
             lg_data = synthesis_ev.payload.get("logic_graph")
             if lg_data:
                 try:

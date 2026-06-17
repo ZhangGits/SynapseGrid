@@ -80,10 +80,10 @@ function App() {
 
   // 收到画布响应时自动切换到画布标签
   useEffect(() => {
-    if (activeMsg?.response?.canvas_schema) {
+    if (outputMode === "canvas" && activeMsg?.response?.canvas_schema) {
       setSidebarTab("canvas");
     }
-  }, [activeMsg?.response?.canvas_schema]);
+  }, [activeMsg?.response?.canvas_schema, outputMode]);
 
   // 已查看过的消息 ID 集合（用于控制打字机效果只出现一次）
   const viewedIds = useRef(new Set<string>());
@@ -217,48 +217,13 @@ function App() {
   /** 查看报告：设置 activeMsg 以在侧边栏显示 */
   function viewReport(msg: ChatMessage) {
     // Canvas 模式直接全屏显示论证结构
-    if (msg.response?.canvas_schema) {
+    if (outputMode === "canvas" && msg.response?.canvas_schema) {
       setActiveMsg(msg);
       setCanvasFullscreen(true);
       setAnimatingId(null);
       return;
     }
 
-    // 检测是否有已回退的 finding
-    const hasRolledBack = msg.response?.audit_metadata.findings.some(f => f.rolled_back);
-    if (hasRolledBack) {
-      // 弹窗询问用户是否要基于未回退的信息重新综合
-      const confirmed = window.confirm(
-        "检测到有已回退的分析要点。是否要基于未回退的信息重新生成综合报告？\n\n" +
-        "注意：这将消耗额外的 Token。"
-      );
-      if (confirmed) {
-        // 用户确认重新综合 → 调用后端重新执行 Synthesis
-        setLoading(true);
-        setError(null);
-        const sessionId = msg.response!.session_id;
-        fetch(`${API_BASE}/tasks/${sessionId}/resynthesize`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        })
-          .then(r => {
-            if (!r.ok) throw new Error("重新综合失败");
-            return r.json();
-          })
-          .then((updated: TaskResponse) => {
-            // 更新消息中的 response
-            setMessages((prev: ChatMessage[]) => prev.map((m: ChatMessage) =>
-              m.id === msg.id ? { ...m, response: updated } : m
-            ));
-            setActiveMsg({ ...msg, response: updated });
-            setAnimatingId(null);
-          })
-          .catch(err => setError(err instanceof Error ? err.message : "Resynthesis failed"))
-          .finally(() => setLoading(false));
-        return;
-      }
-      // 用户取消 → 直接显示当前报告（继续往下执行）
-    }
     setActiveMsg(msg);
     // Canvas 模式不需要打字机效果
     if (msg.response?.canvas_schema) {
@@ -400,7 +365,7 @@ function App() {
 
         <aside style={{ "--aside-width": splitPos + "px" } as React.CSSProperties}>
           {/* Canvas 全屏覆盖层 */}
-      {canvasFullscreen && activeMsg?.response?.canvas_schema && (
+      {outputMode === "canvas" && canvasFullscreen && activeMsg?.response?.canvas_schema && (
         <CanvasViewer
           fullscreen
           schema={activeMsg.response.canvas_schema}
@@ -424,7 +389,7 @@ function App() {
 
       {activeMsg && activeMsg.response && !canvasFullscreen ? (
             <>
-              {activeMsg.response.canvas_schema && (
+              {outputMode === "canvas" && activeMsg.response.canvas_schema && (
                 <div className="sidebar-tabs">
                   <button
                     className={`sidebar-tab ${sidebarTab === "audit" ? "active" : ""}`}
@@ -440,7 +405,7 @@ function App() {
                   </button>
                 </div>
               )}
-              {sidebarTab === "canvas" && activeMsg.response.canvas_schema ? (
+              {outputMode === "canvas" && sidebarTab === "canvas" && activeMsg.response.canvas_schema ? (
                 <CanvasViewer
                   schema={activeMsg.response.canvas_schema}
                   enrichedMarkdown={activeMsg.response.enriched_markdown}
@@ -460,7 +425,7 @@ function App() {
                     setHighlightedFindingId(findingIds[0] || null);
                   }}
                 />
-              ) : activeMsg.response.canvas_schema ? (
+              ) : outputMode === "canvas" && activeMsg.response.canvas_schema ? (
                 // 画布模式下审计标签：直接渲染 Markdown，无打字机效果
                 <div className="markdown-overlay">
                   <div className="markdown-overlay-header">
@@ -492,7 +457,9 @@ function App() {
                 highlightedFindingId={highlightedFindingId}
                 onFindingFocus={(findingId) => {
                   // Audit → Canvas 联动：切换到画布标签
-                  setSidebarTab("canvas");
+                  if (outputMode === "canvas") {
+                    setSidebarTab("canvas");
+                  }
                   setHighlightedFindingId(findingId);
                 }}
                 versions={versions}
