@@ -1,0 +1,7 @@
+{
+  "_comment": "法律审查场景",
+  "research_prompt_override": "Extract legal obligations, rights, liabilities, deadlines, jurisdictional references, and risk clauses. For each finding cite the specific article/clause number if available.",
+  "verify_single_prompt_override": "Check for legal consistency across clauses. Flag findings that lack specific jurisdiction or statute references.",
+  "conflict_detect_prompt_override": "Report conflicts as: clause_conflict (two provisions contradict), jurisdiction_gap (no governing law specified), term_ambiguity (vague or undefined term). Severity: high if fundamental right/obligation is affected.",
+  "synthesis_prompt_override": "Structure your report with: ## 关键条款, ## 权利义务矩阵 (table), ## 风险条款 (ranked by severity), ## 谈判建议.  Use a Mermaid flowchart to show the obligation chain or dispute-resolution pathway."
+}

@@ -1,0 +1,61 @@
+# SynapseGrid MVP Docker Compose 配置（生产优化版）
+# 启动: docker-compose up -d
+# 停止: docker-compose down
+#
+# 生产环境注意：
+# 1. 修改 SYNAPSEGRID_HMAC_KEY 为安全随机字符串
+# 2. 修改 SYNAPSEGRID_CORS_ORIGINS 为实际域名
+# 3. 命名卷 synapse_sessions 持久化会话数据
+
+version: "3.8"
+
+volumes:
+  synapse_sessions:
+    driver: local
+  synapse_logs:
+    driver: local
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=8000
+      # HMAC 密钥：用于内容签名和完整性验证，生产环境请使用安全的随机字符串
+      # 生成命令：python -c "import secrets; print(secrets.token_hex(32))"
+      - SYNAPSEGRID_HMAC_KEY=dev-only-change-me-must-be-32-bytes
+      # CORS 允许的来源（逗号分隔）
+      # 开发环境：Vite dev server (5173)、Docker Nginx (80)
+      # 生产环境：替换为实际域名
+      - SYNAPSEGRID_CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost,http://localhost:80
+    volumes:
+      - synapse_sessions:/tmp/synapse_sessions  # 命名卷持久化会话数据
+      - synapse_logs:/app/logs                   # 命名卷持久化日志
+      - ./backend/app/templates:/app/app/templates
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - VITE_API_BASE=http://localhost:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend/ssl:/etc/nginx/ssl:ro
+    restart: unless-stopped

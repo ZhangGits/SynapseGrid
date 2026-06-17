@@ -1,0 +1,7 @@
+{
+  "_comment": "金融分析场景",
+  "research_prompt_override": "Focus on numerical data, financial metrics (revenue, profit, margin, growth rate), regulatory filings, and market share. When citing numbers always include the source document and time period.",
+  "verify_single_prompt_override": "Pay special attention to numerical accuracy — flag any finding whose confidence is low due to missing or conflicting numeric data. Cross-reference financial figures against stated time periods.",
+  "conflict_detect_prompt_override": "Report conflicts as: numerical_discrepancy (numbers don't match), regulatory_gap (compliance issue), methodology_flaw (analysis method questionable). Severity: high if figures differ by >5%, medium if 1-5%, low otherwise.",
+  "synthesis_prompt_override": "Structure your report with: ## 核心数据, ## 同比/环比变化, ## 风险提示 (regulatory, market, operational), ## 投资建议 (if applicable).  Use a Mermaid flowchart to show the financial ratio derivation chain where helpful."
+}
